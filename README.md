@@ -1,5 +1,9 @@
 # Claude Dispatch
 
+## 本次修改说明
+
+- **【修改位置 1】** **说明批量任务的任务后验证器、超时失败语义及其适用场景。**
+
 `claude-dispatch/` 是独立的 Claude Code 任务派发目录。它负责把任务送进 Claude Code tmux 会话，让学生可以在 tmux 或 Claw Remote 面板里同步观察执行现场。
 
 ## 目录结构
@@ -264,6 +268,7 @@ Claude Code 批量串行派发脚本。它可以读取 `tasks.json`，也可以�
 - `--markdown-pattern GLOB`：Markdown 任务文件匹配规则；默认 `part*.md`，并按文件名自然排序。
 - `--append-prompt TEXT`：在每个任务 Prompt 末尾追加同一段较短要求。
 - `--append-prompt-file FILE`：在每个任务 Prompt 末尾追加指定文件的完整内容。Markdown 模式下，未显式传入时自动读取同目录的 `common-requirements.md`。
+- **【修改位置 1】** **`--post-task-validator FILE`：可选的可执行验证器。任务 Hook 写入 `done` 后才调用；返回非 0 时，该任务仍按失败处理。验证器可读取 `BATCH_TASK_ID`、`BATCH_TASK_NAME`、`BATCH_TASK_INDEX`、`BATCH_TASK_WORKDIR` 和 `BATCH_PREVIOUS_HEAD` 环境变量。**
 - `-g, --group, --target ID`：可选覆盖通知目标；不传时由每个 Part 的单任务 dispatch 根据配置自动选择。
 - `--cdp PORT`：浏览器 CDP 端口，自动传给每个 Part。
 - `-w, --workdir DIR` / `--workdir DIR`：所有子任务共用的工作目录；默认 `/root`，仅需改到其他目录时传。
@@ -296,6 +301,7 @@ Claude Code 批量串行派发脚本。它可以读取 `tasks.json`，也可以�
 - 调用 `dispatch-claude-code.sh` 派发当前 part；
 - 从 dispatch 输出里提取 `TASK_ID`；
 - 轮询 `tasks/<TASK_ID>.json` 等待任务完成；
+- **【修改位置 1】** **Hook 的 `done` 仅表示任务已结束；配置任务后验证器时，只有验证器成功才视为业务成功。等待超时始终记为任务失败，`--stop-on-error` 会阻止派发后续任务；**
 - 把上一步结果摘要传给下一步，形成链式上下文；
 - Claude Code 偶发卡空输入框时，从 `task-meta.json` 重新注入 prompt；
 - 最后输出成功、失败、超时和总耗时。
