@@ -352,8 +352,21 @@ if [ -n "$ENABLE_TMUX" ]; then
     echo ""
 
     # 运行 claude_code_run.py（它会处理 tmux 逻辑）
-    "${CMD[@]}" 2>&1 | tee "$TASK_OUTPUT"
-    EXIT_CODE=${PIPESTATUS[0]}
+    if "${CMD[@]}" 2>&1 | tee "$TASK_OUTPUT"; then
+        EXIT_CODE=0
+    else
+        EXIT_CODE=${PIPESTATUS[0]}
+    fi
+
+    if [ "$EXIT_CODE" -ne 0 ]; then
+        echo "Claude Code runner failed to start with code: $EXIT_CODE" >&2
+        if [ -f "$META_FILE" ]; then
+            jq --arg code "$EXIT_CODE" --arg ts "$(date -Iseconds)" \
+                '. + {exit_code: ($code | tonumber), completed_at: $ts, status: "failed", failure_reason: "Claude Code runner failed to start"}' \
+                "$META_FILE" > "${META_FILE}.tmp" && mv "${META_FILE}.tmp" "$META_FILE"
+        fi
+        exit "$EXIT_CODE"
+    fi
 
     echo ""
     echo "✅ Task sent to Claude Code session: $TMUX_SESSION"
